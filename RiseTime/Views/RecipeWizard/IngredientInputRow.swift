@@ -15,11 +15,14 @@ struct IngredientInputRow: View {
             nameAndWeightFields
             typePicker
 
-            if ingredient.type == .starter {
-                starterHydrationSection
+            if ingredient.type.isStarter {
+                hydrationField
             }
         }
         .padding(.vertical, 4)
+        .onChange(of: ingredient.type) { oldValue, newValue in
+            handleTypeChange(from: oldValue, to: newValue)
+        }
     }
 
     // MARK: - View Components
@@ -48,36 +51,7 @@ struct IngredientInputRow: View {
         .pickerStyle(.menu)
     }
 
-    private var starterHydrationSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Starter Hydration")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            presetButtons
-
-            customHydrationField
-        }
-    }
-
-    private var presetButtons: some View {
-        HStack(spacing: 8) {
-            ForEach(StarterPreset.allCases, id: \.self) { preset in
-                Button {
-                    ingredient.hydration = preset.hydration
-                } label: {
-                    Text(preset.displayName)
-                        .font(.caption)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .tint(ingredient.hydration == preset.hydration ? .blue : .gray)
-            }
-        }
-    }
-
-    private var customHydrationField: some View {
+    private var hydrationField: some View {
         HStack {
             Text("Hydration:")
                 .font(.subheadline)
@@ -89,33 +63,21 @@ struct IngredientInputRow: View {
 
             Text("%")
                 .foregroundStyle(.secondary)
-        }
-    }
-}
 
-// MARK: - Starter Presets
-
-enum StarterPreset: CaseIterable {
-    case poolish
-    case sourdough
-    case biga
-    case levain
-
-    var displayName: String {
-        switch self {
-        case .poolish: return "Poolish"
-        case .sourdough: return "Sourdough"
-        case .biga: return "Biga"
-        case .levain: return "Levain"
+            Spacer()
         }
     }
 
-    var hydration: Double {
-        switch self {
-        case .poolish: return 100
-        case .sourdough: return 100
-        case .biga: return 50
-        case .levain: return 100
+    // MARK: - Actions
+
+    private func handleTypeChange(from oldType: IngredientType, to newType: IngredientType) {
+        // When switching to a starter type, pre-fill hydration with default
+        if newType.isStarter, let defaultHydration = newType.defaultHydration {
+            ingredient.hydration = defaultHydration
+        }
+        // When switching away from starter, clear hydration
+        else if !newType.isStarter {
+            ingredient.hydration = nil
         }
     }
 }

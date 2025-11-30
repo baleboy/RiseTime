@@ -18,6 +18,7 @@ struct ManualEntryView: View {
     @State private var servings: Int = 1
     @State private var servingType: ServingType = .pizza
     @State private var ingredients: [IngredientInput] = []
+    @State private var bakingSteps: [BakingStepInput] = []
     @State private var showingAlert = false
     @State private var alertMessage = ""
 
@@ -31,6 +32,7 @@ struct ManualEntryView: View {
             recipeInfoSection
             servingSection
             ingredientsSection
+            bakingStepsSection
             calculatedMetricsSection
             saveButton
         }
@@ -82,6 +84,26 @@ struct ManualEntryView: View {
             }
         } header: {
             Text("Ingredients")
+        }
+    }
+
+    private var bakingStepsSection: some View {
+        Section {
+            ForEach(bakingSteps) { step in
+                BakingStepInputRow(
+                    step: bindingForStep(step)
+                )
+            }
+            .onDelete(perform: deleteBakingSteps)
+            .onMove(perform: moveBakingSteps)
+
+            Button {
+                addBakingStep()
+            } label: {
+                Label("Add Step", systemImage: "plus.circle.fill")
+            }
+        } header: {
+            Text("Preparation Steps (Optional)")
         }
     }
 
@@ -145,6 +167,9 @@ struct ManualEntryView: View {
         servings = recipe.servings
         servingType = recipe.servingType
         ingredients = recipe.ingredients.map { IngredientInput(from: $0) }
+        bakingSteps = recipe.bakingSteps
+            .sorted(by: { $0.order < $1.order })
+            .map { BakingStepInput(from: $0) }
     }
 
     private func addIngredient() {
@@ -162,15 +187,45 @@ struct ManualEntryView: View {
         return $ingredients[index]
     }
 
+    private func addBakingStep() {
+        let order = bakingSteps.count
+        bakingSteps.append(BakingStepInput(order: order))
+    }
+
+    private func deleteBakingSteps(at offsets: IndexSet) {
+        bakingSteps.remove(atOffsets: offsets)
+        reorderSteps()
+    }
+
+    private func moveBakingSteps(from source: IndexSet, to destination: Int) {
+        bakingSteps.move(fromOffsets: source, toOffset: destination)
+        reorderSteps()
+    }
+
+    private func reorderSteps() {
+        for (index, _) in bakingSteps.enumerated() {
+            bakingSteps[index].order = index
+        }
+    }
+
+    private func bindingForStep(_ step: BakingStepInput) -> Binding<BakingStepInput> {
+        guard let index = bakingSteps.firstIndex(where: { $0.id == step.id }) else {
+            return .constant(step)
+        }
+        return $bakingSteps[index]
+    }
+
     private func saveRecipe() {
         let ingredientModels = ingredients.map { $0.toIngredient() }
         let ingredientsWithPercentages = BakerPercentageCalculator.calculatePercentages(from: ingredientModels)
+        let stepModels = bakingSteps.map { $0.toBakingStep() }
 
         if let existingRecipe = recipe {
             // Update existing recipe
             existingRecipe.name = recipeName
             existingRecipe.recipeDescription = recipeDescription.isEmpty ? nil : recipeDescription
             existingRecipe.ingredients = ingredientsWithPercentages
+            existingRecipe.bakingSteps = stepModels
             existingRecipe.totalWeightInGrams = ingredients.reduce(0) { $0 + $1.weight }
             existingRecipe.hydrationPercentage = calculatedHydration
             existingRecipe.servings = servings
@@ -182,6 +237,7 @@ struct ManualEntryView: View {
                 name: recipeName,
                 recipeDescription: recipeDescription.isEmpty ? nil : recipeDescription,
                 ingredients: ingredientsWithPercentages,
+                bakingSteps: stepModels,
                 totalWeightInGrams: ingredients.reduce(0) { $0 + $1.weight },
                 hydrationPercentage: calculatedHydration,
                 servings: servings,
@@ -224,6 +280,42 @@ struct IngredientInput: Identifiable {
             weightInGrams: weight,
             type: type,
             hydration: hydration
+        )
+    }
+}
+
+// MARK: - Baking Step Input Model
+
+struct BakingStepInput: Identifiable {
+    let id = UUID()
+    var name: String = ""
+    var instructions: String = ""
+    var durationInMinutes: Int = 0
+    var temperatureCelsius: Int?
+    var stepType: StepType = .other
+    var order: Int = 0
+
+    init(order: Int = 0) {
+        self.order = order
+    }
+
+    init(from step: BakingStep) {
+        self.name = step.name
+        self.instructions = step.instructions
+        self.durationInMinutes = step.durationInMinutes
+        self.temperatureCelsius = step.temperatureCelsius
+        self.stepType = step.stepType
+        self.order = step.order
+    }
+
+    func toBakingStep() -> BakingStep {
+        BakingStep(
+            name: name,
+            instructions: instructions,
+            durationInMinutes: durationInMinutes,
+            temperatureCelsius: temperatureCelsius,
+            stepType: stepType,
+            order: order
         )
     }
 }

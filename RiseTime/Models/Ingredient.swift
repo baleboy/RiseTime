@@ -36,14 +36,14 @@ final class Ingredient: Identifiable {
     // MARK: - Starter Calculations
 
     var flourInStarter: Double {
-        guard type == .starter, let hydration = hydration else {
+        guard type.isStarter, let hydration = hydration else {
             return 0
         }
         return weightInGrams / (1 + hydration / 100)
     }
 
     var waterInStarter: Double {
-        guard type == .starter, let hydration = hydration else {
+        guard type.isStarter, let hydration = hydration else {
             return 0
         }
         return (hydration / 100) * flourInStarter
@@ -57,13 +57,32 @@ enum IngredientType: String, Codable, CaseIterable {
     case water
     case salt
     case yeast
-    case starter
+    case poolish
+    case sourdough
+    case biga
+    case levain
+    case customStarter
+    case starter // Deprecated - kept for backward compatibility
     case oil
     case sugar
     case other
 
     var displayName: String {
-        rawValue.capitalized
+        switch self {
+        case .flour: return "Flour"
+        case .water: return "Water"
+        case .salt: return "Salt"
+        case .yeast: return "Yeast"
+        case .poolish: return "Poolish"
+        case .sourdough: return "Sourdough"
+        case .biga: return "Biga"
+        case .levain: return "Levain"
+        case .customStarter: return "Custom Starter"
+        case .starter: return "Starter (Legacy)"
+        case .oil: return "Oil"
+        case .sugar: return "Sugar"
+        case .other: return "Other"
+        }
     }
 
     var isFlour: Bool {
@@ -72,5 +91,26 @@ enum IngredientType: String, Codable, CaseIterable {
 
     var isLiquid: Bool {
         self == .water || self == .oil
+    }
+
+    var isStarter: Bool {
+        switch self {
+        case .poolish, .sourdough, .biga, .levain, .customStarter, .starter:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var defaultHydration: Double? {
+        switch self {
+        case .poolish: return 100
+        case .sourdough: return 100
+        case .biga: return 50
+        case .levain: return 100
+        case .starter: return 100 // Default for legacy starter
+        case .customStarter: return nil
+        default: return nil
+        }
     }
 }

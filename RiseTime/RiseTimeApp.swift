@@ -27,6 +27,9 @@ struct RiseTimeApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task {
+                    await NotificationManager.shared.requestPermission()
+                }
         }
         .modelContainer(sharedModelContainer)
     }

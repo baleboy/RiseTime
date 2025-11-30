@@ -63,7 +63,7 @@ struct HydrationCalculator {
             .reduce(0) { $0 + $1.weightInGrams }
 
         let flourInStarters = ingredients
-            .filter { $0.type == .starter }
+            .filter { $0.type.isStarter }
             .reduce(0) { $0 + $1.flourInStarter }
 
         return explicitFlour + flourInStarters
@@ -75,7 +75,7 @@ struct HydrationCalculator {
             .reduce(0) { $0 + $1.weightInGrams }
 
         let waterInStarters = ingredients
-            .filter { $0.type == .starter }
+            .filter { $0.type.isStarter }
             .reduce(0) { $0 + $1.waterInStarter }
 
         return explicitWater + waterInStarters

@@ -10,7 +10,8 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Recipe.modifiedDate, order: .reverse) private var recipes: [Recipe]
+    @Query(sort: [SortDescriptor(\Recipe.modifiedDate, order: .reverse)])
+    private var recipes: [Recipe]
     @State private var showingRecipeWizard = false
     @State private var showingSettings = false
 

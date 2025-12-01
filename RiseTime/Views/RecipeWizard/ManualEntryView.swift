@@ -22,6 +22,11 @@ struct ManualEntryView: View {
     @State private var showingAlert = false
     @State private var alertMessage = ""
 
+    // Cached calculated values
+    @State private var cachedTotalWeight: Double = 0
+    @State private var cachedHydration: Double?
+    @State private var cachedWeightPerServing: Double = 0
+
     init(recipe: Recipe? = nil, onDismiss: @escaping () -> Void) {
         self.recipe = recipe
         self.onDismiss = onDismiss
@@ -38,6 +43,12 @@ struct ManualEntryView: View {
         }
         .onAppear {
             loadRecipe()
+        }
+        .onChange(of: ingredients) { oldValue, newValue in
+            updateCalculatedMetrics()
+        }
+        .onChange(of: servings) { oldValue, newValue in
+            updateCalculatedMetrics()
         }
         .alert("Error", isPresented: $showingAlert) {
             Button("OK", role: .cancel) { }
@@ -109,8 +120,9 @@ struct ManualEntryView: View {
 
     private var calculatedMetricsSection: some View {
         Section("Calculated Metrics") {
-            metricRow("Total Weight", value: totalWeight)
-            if let hydration = calculatedHydration {
+            metricRow("Total Weight", value: String(format: "%.0fg", cachedTotalWeight))
+            metricRow("Per \(servingType.displayName)", value: String(format: "%.0fg", cachedWeightPerServing))
+            if let hydration = cachedHydration {
                 metricRow("Hydration", value: String(format: "%.1f%%", hydration))
             }
         }
@@ -140,25 +152,24 @@ struct ManualEntryView: View {
 
     // MARK: - Computed Properties
 
-    private var totalWeight: String {
-        let total = ingredients.reduce(0.0) { $0 + $1.weight }
-        return String(format: "%.0fg", total)
-    }
-
-    private var calculatedHydration: Double? {
-        let ingredientModels = ingredients.map { $0.toIngredient() }
-        return HydrationCalculator.calculateHydration(from: ingredientModels)
-    }
-
     private var isValid: Bool {
         !recipeName.isEmpty && !ingredients.isEmpty && ingredients.allSatisfy { !$0.name.isEmpty && $0.weight > 0 }
     }
 
     // MARK: - Actions
 
+    private func updateCalculatedMetrics() {
+        cachedTotalWeight = ingredients.reduce(0.0) { $0 + $1.weight }
+        cachedWeightPerServing = servings > 0 ? cachedTotalWeight / Double(servings) : 0
+
+        let ingredientModels = ingredients.map { $0.toIngredient() }
+        cachedHydration = HydrationCalculator.calculateHydration(from: ingredientModels)
+    }
+
     private func loadRecipe() {
         guard let recipe = recipe else {
             addIngredient()
+            updateCalculatedMetrics()
             return
         }
 
@@ -170,6 +181,8 @@ struct ManualEntryView: View {
         bakingSteps = recipe.bakingSteps
             .sorted(by: { $0.order < $1.order })
             .map { BakingStepInput(from: $0) }
+
+        updateCalculatedMetrics()
     }
 
     private func addIngredient() {
@@ -226,8 +239,8 @@ struct ManualEntryView: View {
             existingRecipe.recipeDescription = recipeDescription.isEmpty ? nil : recipeDescription
             existingRecipe.ingredients = ingredientsWithPercentages
             existingRecipe.bakingSteps = stepModels
-            existingRecipe.totalWeightInGrams = ingredients.reduce(0) { $0 + $1.weight }
-            existingRecipe.hydrationPercentage = calculatedHydration
+            existingRecipe.totalWeightInGrams = cachedTotalWeight
+            existingRecipe.hydrationPercentage = cachedHydration
             existingRecipe.servings = servings
             existingRecipe.servingType = servingType
             existingRecipe.modifiedDate = Date()
@@ -238,8 +251,8 @@ struct ManualEntryView: View {
                 recipeDescription: recipeDescription.isEmpty ? nil : recipeDescription,
                 ingredients: ingredientsWithPercentages,
                 bakingSteps: stepModels,
-                totalWeightInGrams: ingredients.reduce(0) { $0 + $1.weight },
-                hydrationPercentage: calculatedHydration,
+                totalWeightInGrams: cachedTotalWeight,
+                hydrationPercentage: cachedHydration,
                 servings: servings,
                 servingType: servingType
             )
@@ -258,7 +271,7 @@ struct ManualEntryView: View {
 
 // MARK: - Ingredient Input Model
 
-struct IngredientInput: Identifiable {
+struct IngredientInput: Identifiable, Equatable {
     let id = UUID()
     var name: String = ""
     var weight: Double = 0
@@ -281,6 +294,14 @@ struct IngredientInput: Identifiable {
             type: type,
             hydration: hydration
         )
+    }
+
+    static func == (lhs: IngredientInput, rhs: IngredientInput) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.weight == rhs.weight &&
+        lhs.type == rhs.type &&
+        lhs.hydration == rhs.hydration
     }
 }
 

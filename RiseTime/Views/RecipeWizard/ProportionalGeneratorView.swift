@@ -148,6 +148,15 @@ struct ProportionalGeneratorView: View {
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
             }
+
+            HStack {
+                Text("Per \(servingType.displayName)")
+                    .fontWeight(.semibold)
+                Spacer()
+                Text(String(format: "%.0fg", weightPerServing))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

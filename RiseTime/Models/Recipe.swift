@@ -54,6 +54,11 @@ final class Recipe: Identifiable {
     var isVariation: Bool {
         parentRecipeId != nil
     }
+
+    var weightPerServing: Double {
+        guard servings > 0 else { return 0 }
+        return totalWeightInGrams / Double(servings)
+    }
 }
 
 // MARK: - Serving Type

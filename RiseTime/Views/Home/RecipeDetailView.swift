@@ -49,7 +49,11 @@ struct RecipeDetailView: View {
                 if let hydration = recipe.hydrationPercentage {
                     recipeMetric("Hydration", value: String(format: "%.0f%%", hydration))
                 }
-                recipeMetric("Weight", value: String(format: "%.0fg", recipe.totalWeightInGrams))
+                recipeMetric("Total Weight", value: String(format: "%.0fg", recipe.totalWeightInGrams))
+            }
+
+            HStack(spacing: 16) {
+                recipeMetric("Per \(recipe.servingType.displayName)", value: String(format: "%.0fg", recipe.weightPerServing))
             }
         }
     }
